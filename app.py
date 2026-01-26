@@ -7,7 +7,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Configure Gemini API
-GENAI_API_KEY = "PASTE YOUR API KEY HERE"
+GENAI_API_KEY = "AIzaSyCxtquBVOCafgnz7-9BSkNTdlvfi0rjDT8"
 genai.configure(api_key=GENAI_API_KEY)
 
 # Custom commands
@@ -24,7 +24,7 @@ COMMANDS = {
 def generate_response(query):
     """Generate a response for the given query using Gemini."""
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-flash-latest")
         response = model.generate_content(query, generation_config=genai.GenerationConfig(
             max_output_tokens=75,
             temperature=0.1,
@@ -37,8 +37,12 @@ def process_command(command):
     """Process custom commands."""
     for keyword, url in COMMANDS.items():
         if keyword in command:
-            webbrowser.open(url)
-            return f"Opening {keyword.replace('open ', '')}."
+            # Return a dict with the response text and the action details
+            return {
+                "text": f"Opening {keyword.replace('open ', '')}.",
+                "action": "open_url",
+                "url": url
+            }
     return None
 
 @app.route('/process-command', methods=['POST'])
@@ -50,11 +54,16 @@ def process_command_endpoint():
     # Handle custom commands
     custom_response = process_command(command)
     if custom_response:
-        return jsonify({'response': custom_response})
+        # custom_response is now a dict: {'text': ..., 'action': ..., 'url': ...}
+        return jsonify({
+            'response': custom_response['text'],
+            'action': custom_response.get('action'),
+            'url': custom_response.get('url')
+        })
 
     # Generate a response using Gemini
-    response = generate_response(command)
-    return jsonify({'response': response})
+    response_text = generate_response(command)
+    return jsonify({'response': response_text})
 
 if __name__ == '__main__':
     app.run(debug=True)
